@@ -1,0 +1,24 @@
+# Cached upstream data. Not redistributed: salary pages are third-party content
+# under their own terms. Every file here is regenerated automatically on first
+# run (see "Reproducing" in README.md).
+data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+
+# LaTeX build intermediates (the committed PDF is the artifact)
+output/*.aux
+output/*.log
+output/*.out
+output/*.fls
+output/*.fdb_latexmk
+output/*.synctex.gz
+
+# Local tooling, not part of the project
+.claude/
+graphify-out/
+last30days-skill/

@@ -1,0 +1,547 @@
+\documentclass[11pt]{article}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{caption}
+\usepackage{enumitem}
+\usepackage[hidelinks]{hyperref}
+\captionsetup{font=small,labelfont=bf}
+\setlength{\parskip}{4pt}
+\setlength{\parindent}{0pt}
+\emergencystretch=1.5em
+
+\newcommand{\champ}[1]{\textbf{#1}\,$^{\bigstar}$}
+
+\title{\textbf{R-Value: Player and Team Production per Dollar\\ of True NBA Expenditure}\\[6pt]
+\large Model definition, six-season backtest (2018--19 to 2025--26),\\
+and 2026--27 projections}
+\author{NBA Analytics Project}
+\date{July 5, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+\noindent
+R-Value measures NBA production per dollar of \emph{true} team expenditure ---
+salary grossed up by each team's luxury-tax burden under the CBA schedule in
+force that season --- normalized so the league average is 100. Its performance
+core is a calibrated blend of five statistical pillars; its cost core prices
+every contract against the era-correct tax structure (2017-CBA brackets through
+2022--23, the 2023-CBA regime thereafter). Calibrated on six seasons ---
+2018--19 and 2021--22 through 2025--26, deliberately excluding the two
+COVID-distorted years --- the performance core identifies All-NBA selections
+better than PIE, raw plus-minus, or estimated net rating, and a fitted title
+score ranked the actual champion \#1, \#2, \#6, \#1, \#2, \#3. Under
+leave-one-season-out cross-validation, in which every fitted parameter is
+refit without the season it is scored on, it holds \textbf{recall@15 $=
+0.789$} (vs.\ 0.711 for the best unfitted rival), \textbf{$\rho = 0.914$}
+against team wins, and a mean champion rank of \textbf{2.83} of 30 teams. For
+2026--27 the model projects Oklahoma City as champion, New York and Houston as
+\#1 seeds, and Detroit as the league's most cost-efficient team.
+\end{abstract}
+
+\section{Key findings}
+\begin{itemize}[itemsep=2pt]
+\item \textbf{The performance core is the best award predictor tested, and it
+survives cross-validation.} Over six seasons it recovers $82.2\%$ of actual
+All-NBA selections in its top 15, versus $71.1\%$ for PIE$\times$minutes,
+$34.4\%$ for raw plus-minus, and $23.3\%$ for estimated net rating. Refit
+per fold without the season it is scored on, it still recovers $78.9\%$ ---
+the gap between fitted and honest accuracy is three percentage points
+(Section~\ref{sec:rivals}).
+\item \textbf{Extending the calibration window rebalanced the weights.} On
+three seasons the fit leaned on box production (0.35) and the impact ratings
+(0.20 offense, 0.20 defense). On six seasons the offensive and defensive
+impact weights each settle at \textbf{0.15}, box drops to 0.25, and the freed
+weight flows to PIE (0.30) and load-scaled efficiency (0.15): over a longer
+window, noisy on-court impact ratings cede ground to the steadier all-in-one
+and efficiency signals (Section~\ref{sec:calib}).
+\item \textbf{Rotation depth, not star power, separates champions.} Fitted on
+six actual champions, the title score weights the eight-man-rotation term nine
+times heavier than the star term ($a = 0.2$ on the top-two, $b = 1.8$ on the
+rotation). Star ceiling matters, but the quality of the de facto playoff
+rotation is what the fit keeps choosing (Section~\ref{sec:backtest}).
+\item \textbf{Champions usually are not value teams.} Across the six title
+winners, value ranks were 16th, 29th, 14th, 13th, \textbf{3rd}, and 14th. The
+2021--22 Warriors are the extreme: a \$179M payroll plus a \$170M repeater-tax
+bill bought a championship at a Team R-Value of 49 --- the least efficient
+title in the sample. Only the 2024--25 Thunder won while near the top of the
+value board, the signature of a rookie-scale core peaking before its
+extensions kick in.
+\item \textbf{2026--27:} Oklahoma City is a clear title favorite (score 4.49
+vs.\ New York 3.80, Houston 3.63, Denver 3.42) despite projecting as only the
+West \#4 seed on per-minute quality --- the league's best top-two plus its
+deepest rotation, now paid for in full (\$234M payroll, \$108M tax). Detroit
+projects as the most R-Valuable team (159) for the second straight season.
+\end{itemize}
+
+\section{The model}
+\label{sec:model}
+
+\subsection{Performance pillars}
+For each player-season, five pillars are computed and standardized. Let
+$z(\cdot)$ denote a z-score whose mean and deviation are taken over the
+qualified pool (players with $m \ge 500$ minutes), and let ``lg'' denote the
+minutes-weighted league average. With $m$ the player's minutes:
+\begin{align}
+\mathrm{BOX} &= \mathrm{PTS} + 0.7\,\mathrm{REB} + 1.4\,\mathrm{AST}
+  + 2.2\,\mathrm{STL} + 2.0\,\mathrm{BLK} - 1.4\,\mathrm{TOV} \\[2pt]
+z_{\mathrm{box}} &= \tfrac12\, z\!\left(36\,\mathrm{BOX}/m\right)
+  + \tfrac12\, z\!\left(\mathrm{BOX}\right)
+  && \text{(rate + volume)} \\[2pt]
+z_{\mathrm{eff}} &= z\!\left[(\mathrm{TS\%} - \mathrm{TS\%}^{\mathrm{lg}})
+  \cdot \mathrm{USG\%}\right]
+  && \text{(load-scaled efficiency)} \\[2pt]
+z_{\mathrm{off}} &= z\!\left[\bigl(0.6\,\Delta E_{\mathrm{OFF}}
+  + 0.4\,\Delta \mathrm{OFF}\bigr)\cdot \tfrac{m}{m+500}\right] \\[2pt]
+z_{\mathrm{def}} &= z\!\left[\bigl(0.6\,\Delta E_{\mathrm{DEF}}
+  + 0.4\,\Delta \mathrm{DEF}\bigr)\cdot \tfrac{m}{m+500}\right] \\[2pt]
+z_{\mathrm{adv}} &= z\!\left(\mathrm{PIE}\right)
+  && \text{(game-event share)}
+\end{align}
+where $\Delta$ terms are the player's (estimated) offensive/defensive rating
+relative to league average, and the $m/(m+500)$ factor is a reliability
+shrinkage that pulls low-minute impact ratings toward zero.
+
+\subsection{Composite score, availability, and WPS}
+\begin{align}
+\mathrm{CPI} &= 0.25\,z_{\mathrm{box}} + 0.15\,z_{\mathrm{eff}}
+  + 0.15\,z_{\mathrm{off}} + 0.15\,z_{\mathrm{def}} + 0.30\,z_{\mathrm{adv}}
+  && \text{(calibrated, Sec.~\ref{sec:calib})} \\[2pt]
+\mathrm{PS} &= 100\,\Phi(\mathrm{CPI})
+  && \text{($\Phi$ = standard normal CDF)} \\[2pt]
+A &= \sqrt{\min(m,\,2200)/2200}
+  && \text{(availability credit)} \\[2pt]
+\mathrm{WPS} &= \mathrm{PS}\cdot\bigl(0.55 + 0.45\,A\bigr)
+  && \text{(weighted performance score)}
+\end{align}
+PS maps CPI onto a 0--100 percentile-like scale; WPS discounts it for games
+missed, with a floor so that an injured star is dampened, not erased.
+
+\subsection{Cost side: pricing each era's CBA}
+Team payroll $P$ is the sum of guaranteed salaries (dead money included,
+two-way contracts excluded). The luxury tax $T(P)$ is computed from the exact
+bracket schedule of the applicable league year, using repeater rates where a
+team qualified:
+\begin{equation}
+T(P) \;=\; \sum_{k\ge 1} r_k \cdot
+  \min\!\Bigl(w,\; \max\bigl(0,\; P - \tau - (k-1)\,w\bigr)\Bigr),
+\end{equation}
+with $\tau$ the tax line and $w$ the bracket width. Under the 2017 CBA
+(through 2022--23): $w = \$5$M, rates 1.50, 1.75, 2.50, 3.25, \ldots{}
+($+1.00$ each for repeaters). Under the 2023 CBA (2025--26 rates, width
+indexed to cap growth): 1.00, 1.25, 3.50, 4.75, \ldots{} standard and 3.00,
+3.25, 5.50, 6.75, \ldots{} repeater, $+0.50$ per bracket beyond the fourth.
+Total expenditure and each player's effective cost are then
+\begin{equation}
+\mathrm{TE} = P + T(P), \qquad
+\mathrm{EC}_i = s_i \cdot \frac{\mathrm{TE}}{P}, \qquad
+\mathrm{CI}_i = \operatorname{clip}\!\left(
+  \frac{\mathrm{EC}_i}{\overline{\mathrm{TE}}},\; 0.002,\; 0.40\right),
+\end{equation}
+where $s_i$ is the player's salary and $\overline{\mathrm{TE}}$ the league-mean
+total expenditure that season. Every salary dollar on a taxpaying roster is
+grossed up by that team's tax multiplier: a \$40M contract on a
+repeater-taxpayer costs its franchise far more than \$40M.
+
+\subsection{R-Value}
+\begin{align}
+\textbf{Player:}\quad
+R_i &= 100 \cdot \operatorname{normalize}\!\left[
+  \mathrm{WPS}_i \cdot \left(\frac{\overline{\mathrm{CI}}}{\mathrm{CI}_i}\right)^{0.35}
+  \right] \\[4pt]
+\textbf{Team:}\quad
+\mathrm{TeamR} &= 100 \cdot \operatorname{normalize}\!\left[
+  \frac{\sum_i \mathrm{WPS}_i\, m_i}{\mathrm{TE}} \right] \\[4pt]
+\textbf{Title:}\quad
+\mathrm{TITLE} &= z(\mathrm{PERF}) \;+\; a\, z(\mathrm{TOP2})
+  \;+\; b\, z(\mathrm{ROT8}), \qquad a = 0.2,\;\; b = 1.8
+\end{align}
+where $\operatorname{normalize}$ divides by the league mean (so 100 is
+average) and the $0.35$ exponent dampens cost leverage so minimum contracts
+cannot trivially top the list.
+$\mathrm{PERF} = \sum \mathrm{WPS}\,m / \sum m$ is minutes-weighted team
+quality; $\mathrm{TOP2}$ is the mean WPS of the two best players; and
+$\mathrm{ROT8}$ is the minutes-weighted WPS of the eight most-played
+players --- the de facto rotation that playoff basketball compresses to.
+
+\subsection{Calibration and data}
+\label{sec:calib}
+The five CPI weights are fitted by a two-stage simplex grid search maximizing
+an equal blend of All-NBA recall@15 and Spearman correlation with team wins,
+averaged over the six calibration seasons. The title premiums $(a,b)$ are then
+fitted on a $0$--$2.5$ grid to minimize the six actual champions' mean
+title-score rank, preferring smaller premiums on ties.
+
+Two seasons inside the window are deliberately excluded: 2019--20 (the bubble
+season; teams played uneven schedules, breaking the availability model) and
+2020--21 (72 games; luxury-tax bills were pro-rated at settlement, breaking
+the cost model). Award eligibility follows each era's rules: the 65-game
+requirement applies from 2023--24 only, with a 40-game floor earlier.
+Pre-2023 salaries are reconstructed from per-season contract archives,
+individual player salary histories where re-signings purged the archive rows,
+and hand-verified patches for players absent from all sources; team payroll
+totals are validated against independent per-team aggregates for all 30 teams
+in every season.
+
+\section{Validation against rival metrics}
+\label{sec:rivals}
+
+\begin{table}[h]\centering
+\caption{Predicting All-NBA selections: recall@15 among award-eligible
+players, by season. R-Value uses its cost-free performance core (WPS).}
+\small
+\begin{tabular}{lccccccc}
+\toprule
+Metric & 18--19 & 21--22 & 22--23 & 23--24 & 24--25 & 25--26 & Mean \\
+\midrule
+\textbf{R-Value (WPS core)} & \textbf{0.800} & \textbf{0.867} & 0.733 & \textbf{0.933} & \textbf{0.800} & \textbf{0.800} & \textbf{0.822} \\
+PIE $\times$ minutes        & 0.733 & 0.733 & 0.733 & 0.733 & 0.600 & 0.733 & 0.711 \\
+Raw plus-minus              & 0.333 & 0.400 & 0.267 & 0.333 & 0.400 & 0.333 & 0.344 \\
+Estimated net rating        & 0.200 & 0.267 & 0.200 & 0.200 & 0.267 & 0.267 & 0.233 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\begin{table}[h]\centering
+\caption{Predicting regular-season wins: Spearman rank correlation, by season.}
+\small
+\begin{tabular}{lccccccc}
+\toprule
+Metric & 18--19 & 21--22 & 22--23 & 23--24 & 24--25 & 25--26 & Mean \\
+\midrule
+Team net rating            & 0.976 & 0.950 & 0.931 & 0.955 & 0.952 & 0.951 & 0.952 \\
+\textbf{R-Value perf core} & \textbf{0.935} & \textbf{0.902} & \textbf{0.880} & \textbf{0.924} & \textbf{0.932} & \textbf{0.927} & \textbf{0.917} \\
+Team R-Value (per dollar)  & 0.531 & 0.482 & 0.297 & 0.499 & 0.633 & 0.813 & 0.543 \\
+Payroll                    & 0.431 & 0.360 & 0.575 & 0.611 & 0.129 & 0.393 & 0.417 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Three observations. First, R-Value beats or ties every rival on All-NBA
+prediction in five of six seasons (2022--23 is a tie with PIE; voters that
+year rewarded narrative picks like Fox and Randle that no impact metric
+selects). Second, team net rating edges the performance core on wins ($0.952$
+vs.\ $0.917$) --- but net rating \emph{is} point differential, which is
+near-definitionally wins; it cannot rank players, price contracts, or be
+projected forward from individual contracts. R-Value does all three from one
+framework. Third, payroll alone correlates with wins at only $0.417$ ---
+money buys far less than reputation suggests, which is precisely the
+inefficiency R-Value quantifies.
+
+\subsection{Out-of-sample validation}
+\label{sec:cv}
+
+The figures above are \emph{in-sample}: the pillar weights and title premiums
+were grid-searched to maximize exactly those quantities on exactly those
+seasons. The rival metrics have no fitted parameters, so this comparison
+flatters R-Value. To correct for it, every fitted parameter is refit on five
+seasons and scored on the sixth, rotating through all six.
+
+\begin{table}[h]\centering
+\caption{Leave-one-season-out cross-validation. Each row refits the five
+pillar weights and both title premiums \emph{without} the held-out season,
+then scores that season.}
+\small
+\begin{tabular}{lcccccccccc}
+\toprule
+Held out & Recall & $\rho$ & Champ & \multicolumn{5}{c}{Weights chosen} & $a$ & $b$ \\
+\cmidrule(lr){5-9}
+ & @15 & wins & rank & box & eff & off & def & PIE & & \\
+\midrule
+2018--19 & 0.800 & 0.935 & 1 & 0.25 & 0.15 & 0.15 & 0.15 & 0.30 & 0.2 & 1.8 \\
+2021--22 & 0.800 & 0.882 & 3 & 0.40 & 0.05 & 0.15 & 0.20 & 0.20 & 1.5 & 2.4 \\
+2022--23 & 0.733 & 0.880 & 6 & 0.25 & 0.15 & 0.15 & 0.15 & 0.30 & 0.2 & 1.8 \\
+2023--24 & 0.800 & 0.926 & 1 & 0.25 & 0.20 & 0.15 & 0.15 & 0.25 & 0.1 & 2.1 \\
+2024--25 & 0.800 & 0.932 & 3 & 0.25 & 0.15 & 0.15 & 0.15 & 0.30 & 0.0 & 1.8 \\
+2025--26 & 0.800 & 0.927 & 3 & 0.25 & 0.15 & 0.15 & 0.15 & 0.30 & 0.2 & 1.8 \\
+\midrule
+\textbf{Mean} & \textbf{0.789} & \textbf{0.914} & \textbf{2.83} & \multicolumn{7}{c}{} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The degradation is small: recall@15 falls from $0.822$ to $0.789$, still
+comfortably ahead of PIE$\times$minutes at $0.711$; the wins correlation falls
+from $0.917$ to $0.914$; mean champion rank slips from $2.50$ to $2.83$. The
+weights are also stable --- four of six folds select an identical vector, the
+offensive-impact weight is $0.15$ in \emph{all six}, and the defensive weight
+varies by $0.05$. Only the 2021--22 fold diverges materially, leaning on box
+production instead of PIE.
+
+The title premiums tell the same story: the rotation term $b$ lands in
+$[1.8, 2.4]$ in every fold while the star term $a$ sits at or below $0.2$ in
+five of six. Whatever the precise magnitudes, the fit keeps choosing rotation
+depth over star ceiling, and it does so without having seen the champion it is
+asked to rank.
+
+\section{Historical backtest: six seasons, six champions}
+\label{sec:backtest}
+
+\subsection{Did the title score find the champion?}
+
+\begin{table}[h]\centering
+\caption{Top five title scores per season vs.\ what actually happened.
+$^{\bigstar}$ = actual champion. PO-W = playoff wins (16 = title).}
+\scriptsize
+\begin{tabular}{clcccccc}
+\toprule
+Season & Team & Title & Perf & TOP2 & ROT8 & Wins & PO-W \\
+\midrule
+2018--19 & \champ{TOR} & 5.12 & 68.2 & 92.5 & 76.8 & 58 & 16 \\
+         & GSW         & 4.52 & 64.8 & 98.2 & 74.3 & 57 & 14 \\
+         & MIL         & 4.38 & 62.9 & 94.1 & 75.1 & 60 & 10 \\
+         & UTA         & 3.58 & 64.0 & 89.7 & 69.7 & 50 & 1  \\
+         & PHI         & 3.39 & 61.3 & 92.4 & 69.9 & 51 & 7  \\
+\midrule
+2021--22 & BOS         & 5.09 & 67.1 & 92.9 & 74.7 & 51 & 14 \\
+         & \champ{GSW} & 3.72 & 61.7 & 87.5 & 70.0 & 53 & 16 \\
+         & PHX         & 3.72 & 62.6 & 92.2 & 69.0 & 64 & 7  \\
+         & UTA         & 3.16 & 59.2 & 92.3 & 67.6 & 49 & 2  \\
+         & MEM         & 2.99 & 60.3 & 85.2 & 66.5 & 56 & 6  \\
+\midrule
+2022--23 & BOS         & 4.45 & 65.4 & 90.4 & 71.0 & 57 & 11 \\
+         & CLE         & 4.02 & 63.6 & 89.6 & 69.7 & 51 & 1  \\
+         & SAC         & 2.81 & 59.7 & 90.4 & 65.1 & 48 & 3  \\
+         & MIL         & 2.67 & 56.5 & 92.6 & 66.1 & 58 & 1  \\
+         & NYK         & 2.40 & 56.7 & 84.5 & 65.2 & 47 & 6  \\
+         & \multicolumn{7}{l}{\emph{champion DEN ranked \#6 (coasted to perf \#9; playoff Joki\'c broke the model)}} \\
+\midrule
+2023--24 & \champ{BOS} & 5.29 & 70.7 & 91.6 & 78.8 & 64 & 16 \\
+         & MIN         & 3.98 & 68.5 & 90.1 & 71.1 & 56 & 9  \\
+         & OKC         & 3.28 & 61.5 & 94.9 & 70.2 & 57 & 6  \\
+         & NOP         & 2.92 & 61.3 & 83.8 & 68.9 & 49 & 0  \\
+         & LAC         & 2.80 & 60.0 & 91.0 & 68.1 & 51 & 2  \\
+\midrule
+2024--25 & CLE         & 4.89 & 65.3 & 94.5 & 78.9 & 64 & 5  \\
+         & \champ{OKC} & 4.32 & 67.1 & 94.5 & 73.5 & 68 & 16 \\
+         & BOS         & 4.31 & 68.0 & 88.0 & 73.6 & 61 & 6  \\
+         & MIN         & 3.20 & 63.3 & 86.1 & 68.4 & 49 & 9  \\
+         & NYK         & 2.84 & 60.9 & 89.7 & 66.8 & 51 & 10 \\
+\midrule
+2025--26 & SAS         & 4.06 & 66.0 & 89.0 & 72.6 & 62 & 13 \\
+         & BOS         & 3.55 & 65.0 & 88.0 & 69.6 & 56 & 3  \\
+         & \champ{NYK} & 3.37 & 61.5 & 89.6 & 70.3 & 53 & 16 \\
+         & OKC         & 3.18 & 62.0 & 97.1 & 67.7 & 64 & 11 \\
+         & MIN         & 3.12 & 60.4 & 85.4 & 69.6 & 49 & 6  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The champion ranked \textbf{\#1, \#2, \#6, \#1, \#2, \#3} --- mean rank 2.50
+out of 30 teams, with four of six champions in the top two. The one real miss
+is instructive: the 2022--23 Nuggets ranked ninth in regular-season
+performance because Joki\'c's supporting cast coasted, then flipped a switch
+in April --- exactly the failure mode a regular-season metric cannot see. The
+2021--22 season shows the opposite face: Boston graded far ahead of the field,
+reached the Finals, and lost it to the Warriors in six --- a near-hit ranked
+second.
+
+\subsection{Value and winning are different axes}
+
+\begin{table}[h]\centering
+\caption{Most R-Valuable teams per season vs.\ where the champion ranked in
+value terms (of 30).}
+\small
+\begin{tabular}{clcc}
+\toprule
+Season & Top three by Team R-Value & Champion (TeamR) & Champ.\ value rank \\
+\midrule
+2018--19 & PHI 139, UTA 138, IND 136 & TOR (105) & 16th \\
+2021--22 & MEM 152, CHA 149, PHX 144 & GSW (49)  & 29th \\
+2022--23 & MEM 151, SAC 142, NYK 141 & DEN (107) & 14th \\
+2023--24 & OKC 143, ORL 142, IND 139 & BOS (109) & 13th \\
+2024--25 & DET 153, CLE 151, OKC 151 & OKC (151) & 3rd  \\
+2025--26 & MIA 141, SAS 138, DET 136 & NYK (103) & 14th \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The pattern across eight years is stable: championships are bought at roughly
+league-average efficiency or worse, and the value leaderboard is populated by
+young teams on rookie-scale contracts --- some of which (OKC 2023--24
+$\rightarrow$ champion 2024--25) convert value into titles, and some of which
+(MEM 2021--23) never do. The 2021--22 Warriors bookend the distribution: with
+a \$179M payroll and a \$170M repeater-tax bill, their Team R-Value of 49 is
+the least efficient championship in the sample --- and a working definition of
+what ``buying a title'' looks like in R-Value terms.
+
+\subsection{All-NBA through the R-Value lens}
+Of the 90 actual All-NBA selections across the six seasons, the performance
+core placed \textbf{74 (82.2\%)} in its top fifteen eligible players
+(12, 13, 11, 14, 12, and 12 per season). The same tables expose the price of
+stardom in every era: in 2021--22, rookie-scale Luka Don\v{c}i\'c (WPS 96.9,
+\$10.2M, R $= 210$) and Trae Young (WPS 95.1, \$8.3M, R $= 221$) delivered
+first-five production at a fifth of the veteran max; in 2025--26 the same slot
+belongs to Jalen Duren (WPS 95.7, \$6.5M, R $= 253$) and Victor Wembanyama
+(WPS 96.2, \$13.4M, R $= 197$).
+
+\section{2026--27 projections}
+\label{sec:predict}
+
+Player CPI is projected as a $0.55/0.30/0.15$ blend of the last three seasons
+plus an age-curve adjustment; minutes from a two-season blend, rescaled to a
+full 19{,}680-minute roster; rosters and salaries reflect contracts signed as
+of July 5, 2026 (431 players, of whom 41 rookies/unknowns enter at replacement
+level). Unsigned free agents are absent by construction.
+
+\subsection{Predicted standings}
+
+\begin{table}[h]\centering
+\caption{Projected 2026--27 standings by performance core. TeamR = projected
+Team R-Value; payroll and tax in \$M.}
+\scriptsize
+\begin{tabular}{clcccrr@{\hspace{16pt}}clcccrr}
+\toprule
+\multicolumn{7}{c}{\textbf{East}} & \multicolumn{7}{c}{\textbf{West}} \\
+\cmidrule(r{16pt}){1-7}\cmidrule{8-14}
+\# & Team & Perf & Title & TeamR & Pay & Tax &
+\# & Team & Perf & Title & TeamR & Pay & Tax \\
+\midrule
+1  & NYK & 60.9 & 3.80  & 95  & 215 & 46 & 1  & HOU & 60.5 & 3.63  & 125 & 199 & 0   \\
+2  & CLE & 55.4 & 2.40  & 123 & 184 & 0  & 2  & DEN & 59.2 & 3.42  & 83  & 220 & 73  \\
+3  & BOS & 55.3 & 2.47  & 109 & 203 & 5  & 3  & SAS & 58.9 & 3.00  & 122 & 198 & 0   \\
+4  & TOR & 55.0 & 2.29  & 111 & 202 & 1  & 4  & OKC & 58.0 & 4.49  & 69  & 234 & 108 \\
+5  & DET & 54.4 & 2.67  & 159 & 140 & 0  & 5  & MIN & 56.5 & 2.22  & 80  & 219 & 70  \\
+6  & ORL & 54.4 & 1.69  & 80  & 224 & 55 & 6  & LAL & 52.8 & 1.46  & 112 & 192 & 0   \\
+7  & PHI & 51.6 & 0.86  & 103 & 203 & 2  & 7  & GSW & 52.7 & 0.90  & 117 & 184 & 0   \\
+8  & IND & 51.3 & 0.54  & 98  & 208 & 7  & 8  & POR & 46.9 & $-$1.17 & 101 & 191 & 0 \\
+9  & MIA & 49.5 & 0.18  & 102 & 199 & 0  & 9  & PHX & 45.6 & $-$0.87 & 73  & 214 & 43 \\
+10 & ATL & 48.4 & 0.60  & 104 & 191 & 0  & 10 & DAL & 43.9 & $-$1.48 & 101 & 178 & 0  \\
+11 & CHA & 47.2 & $-$0.01 & 115 & 169 & 0 & 11 & NOP & 42.6 & $-$1.99 & 91  & 192 & 0 \\
+12 & MIL & 44.0 & $-$0.40 & 108 & 167 & 0 & 12 & LAC & 40.6 & $-$3.00 & 122 & 136 & 0 \\
+13 & CHI & 41.7 & $-$2.14 & 104 & 165 & 0 & 13 & UTA & 37.6 & $-$4.37 & 88  & 175 & 0 \\
+14 & BKN & 36.2 & $-$4.38 & 90  & 164 & 0 & 14 & SAC & 37.1 & $-$4.56 & 60  & 219 & 35 \\
+15 & WAS & 32.5 & $-$6.76 & 73  & 183 & 0 & 15 & MEM & 33.1 & $-$5.49 & 86  & 158 & 0  \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Title picture}
+
+\begin{table}[h]\centering
+\caption{Top five 2026--27 title scores. OKC wins on rotation depth despite
+projecting fourth in the West on per-minute quality.}
+\begin{tabular}{clccccc}
+\toprule
+Rank & Team & Conf.\ seed & Title score & Perf & TOP2 & ROT8 \\
+\midrule
+1 & \textbf{OKC} & West \#4 & \textbf{4.49} & 58.0 & 93.6 & \textbf{71.6} \\
+2 & NYK & East \#1 & 3.80 & 60.9 & 88.6 & 66.2 \\
+3 & HOU & West \#1 & 3.63 & 60.5 & 87.1 & 65.7 \\
+4 & DEN & West \#2 & 3.42 & 59.2 & 92.9 & 64.8 \\
+5 & SAS & West \#3 & 3.00 & 58.9 & 85.9 & 63.5 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+OKC's projected eight-man rotation is more than five WPS points clear of every
+other contender --- the same profile the backtest ranked top-two in 2024--25
+--- while Denver enters the contender group on the strength of the
+Joki\'c--Murray top-two (92.9). The champion pick is robust to the calibration
+window: both the three-season and six-season fits select OKC, but the
+six-season fit widens the margin. The cost side is equally striking: OKC's
+Team R-Value falls to 69 (\$234M payroll, \$108M tax), completing the
+conversion from the league's best value team (2023--24) to its biggest
+spender --- the exact path the 2021--22 Warriors took to their inefficient
+title.
+
+\subsection{Predicted All-NBA}
+
+\begin{table}[h]\centering
+\caption{Projected 2026--27 All-NBA: top 15 by projected WPS among players
+projected for $\ge 1600$ minutes. Salary in \$M.}
+\small
+\begin{tabular}{clcccrr}
+\toprule
+Team & Player & Club & Age & WPS & Salary & R-Value \\
+\midrule
+1st & Shai Gilgeous-Alexander & OKC & 28 & 99.8 & 40.8 & 126 \\
+1st & Nikola Joki\'c          & DEN & 32 & 99.8 & 59.0 & 114 \\
+1st & Luka Don\v{c}i\'c       & LAL & 28 & 96.9 & 51.0 & 129 \\
+1st & Victor Wembanyama       & SAS & 23 & 94.0 & 16.9 & 184 \\
+1st & Jalen Duren             & DET & 23 & 92.9 &  9.0 & 227 \\
+\midrule
+2nd & Donovan Mitchell        & CLE & 30 & 91.9 & 50.1 & 123 \\
+2nd & Karl-Anthony Towns      & NYK & 31 & 91.5 & 57.1 & 109 \\
+2nd & Anthony Edwards         & MIN & 25 & 90.7 & 48.9 & 111 \\
+2nd & Cade Cunningham         & DET & 25 & 90.5 & 50.1 & 121 \\
+2nd & Tyrese Haliburton       & IND & 27 & 90.5 & 48.9 & 121 \\
+\midrule
+3rd & Kawhi Leonard           & TOR & 36 & 88.9 & 50.3 & 119 \\
+3rd & Kevin Durant            & HOU & 38 & 87.8 & 43.9 & 123 \\
+3rd & Chet Holmgren           & OKC & 25 & 87.3 & 41.2 & 110 \\
+3rd & Evan Mobley             & CLE & 26 & 87.1 & 50.1 & 117 \\
+3rd & Jarrett Allen           & CLE & 29 & 86.7 & 28.0 & 142 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Where the value is}
+
+\begin{table}[h]\centering
+\caption{Projected most R-Valuable teams (left) and highest player R-Values
+among players projected for $\ge 1200$ minutes (right, top 8).}
+\small
+\begin{tabular}{clcc@{\hspace{24pt}}clcc}
+\toprule
+\# & Team & TeamR & Proj.\ seed & \# & Player & R & WPS \\
+\midrule
+1 & DET & 159.0 & East \#5  & 1 & Neemias Queta (BOS)      & 282 & 76.0 \\
+2 & HOU & 124.7 & West \#1  & 2 & Moussa Diabat\'e (CHA)   & 245 & 63.6 \\
+3 & CLE & 123.1 & East \#2  & 3 & Ryan Kalkbrenner (CHA)   & 237 & 61.1 \\
+4 & LAC & 121.9 & West \#12 & 4 & Jalen Duren (DET)        & 227 & 92.9 \\
+5 & SAS & 121.7 & West \#3  & 5 & Kel'el Ware (MIL)        & 219 & 71.0 \\
+6 & GSW & 117.0 & West \#7  & 6 & Ryan Rollins (MIL)       & 207 & 63.6 \\
+7 & CHA & 114.6 & East \#11 & 7 & Payton Pritchard (BOS)   & 200 & 78.2 \\
+8 & LAL & 112.3 & West \#6  & 8 & Cam Spencer (MEM)        & 197 & 50.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Detroit is the standout: a projected playoff seed on a \$140M, tax-free
+payroll, anchored by two projected All-NBA players of whom one (Duren) earns
+\$9M. The six-season backtest gives that profile a precedent with both
+outcomes: OKC 2023--24 converted the same shape into a title within two
+seasons; Memphis 2021--23 topped the value board twice and never escaped the
+second round.
+
+\section{Limitations}
+\begin{itemize}[itemsep=2pt]
+\item \textbf{COVID seasons excluded.} 2019--20 and 2020--21 are omitted
+because uneven schedules and pro-rated tax bills break the availability and
+cost models respectively; the calibration window is therefore six seasons
+spanning eight years, not eight consecutive seasons.
+\item \textbf{Pre-2023 salary reconstruction.} Older seasons are rebuilt from
+contract archives that purge superseded deals; coverage is restored via
+individual salary histories and hand patches, and team totals are validated
+against independent aggregates, but a handful of departed role players carry
+imputed minimum salaries.
+\item \textbf{Roster incompleteness for 2026--27.} Projections use contracts
+signed as of the run date; unsigned free agents (e.g., LeBron James, James
+Harden) and future signings are absent, which depresses their destination
+teams. 2026--27 cap, tax, and apron figures are league projections.
+\item \textbf{Six champions is still a small fit.} The title premiums
+$(a,b) = (0.2, 1.8)$ carry wide uncertainty. Cross-validation
+(Section~\ref{sec:cv}) shows the \emph{direction} is stable --- rotation over
+star in all six folds --- but $b$ ranges from 1.8 to 2.4 across them, and
+mean champion rank is the weakest of the three validated quantities.
+\item \textbf{Descriptive tables use the full-sample fit.} The per-season
+tables in Section~\ref{sec:backtest} and the 2026--27 projections are
+generated with weights fit on all six seasons, which is the right choice for
+description and forecasting. Only Section~\ref{sec:cv} reports accuracy the
+model had not already seen; cite those figures, not the in-sample ones.
+\end{itemize}
+
+\vspace{6pt}
+\hrule
+\vspace{4pt}
+{\small Generated from the R-Value pipeline
+(\texttt{backtest.py}, \texttt{predict.py}); data: NBA Stats API and public
+salary records, seasons 2018--19 through 2025--26 (ex-COVID), contracts as of
+July 5, 2026. League average $=$ 100 for all R-Values.}
+
+\end{document}
