@@ -10,6 +10,7 @@
 \setlength{\parindent}{0pt}
 \pagestyle{empty}
 \emergencystretch=1.5em
+\allowdisplaybreaks
 
 \begin{document}
 
@@ -18,65 +19,70 @@
 \end{center}
 \vspace{2pt}
 
-\textbf{Introduction.} While public player-value metrics assess production, they
-fail to take into account the costs involved. The nominal salary greatly
-underestimates these costs since, under the luxury tax, a dollar paid by a
-repeater taxpayer can cost the franchise several times what a dollar paid by a
-team below the limit costs. We want to know which players and teams achieve the
-highest level of production for each dollar of true expenditure and whether
-cost-efficiency is linked to winning championships. This is a timely question
-because the apron system introduced in the 2023 CBA was specifically designed to
-limit high-spending rosters.
+\textbf{Introduction.} Public player-value metrics assess production but ignore
+what it costs. Nominal salary badly understates that cost: under the luxury tax,
+a dollar paid by a repeater taxpayer can cost its franchise several times a
+dollar paid by a team below the line. We ask which players and teams achieve the
+highest production per dollar of true expenditure, and whether cost-efficiency is
+linked to winning championships. The question is timely: the 2023 CBA's apron
+system was designed specifically to limit high-spending rosters.
 
-\textbf{Methods.} The R-Value matches a performance core with a CBA-correct cost
-model. The core combines five z-scored components---box production (in terms of
-rate and volume), usage-scaled shooting efficiency, minute-shrunk on-court
-offensive and defensive impact, and PIE---into a single composite index,
-transforms this index using the normal cumulative distribution function into a
-score ranging from 0 to 100, and then adjusts it for availability. The weights
-assigned to the pillars are determined by a two-stage simplex grid search which
-aims to maximise both All-NBA recall@15 and team-win rank correlation. The cost
-model calculates the luxury tax for each season based on the bracket schedule
-then in effect (from the 2017 CBA through to the 2022--23 season, and thereafter
-under the 2023 CBA), applies the repeater rates, and increases each salary by the
-team's total-expenditure multiplier. The player R-Value is calculated by dividing
-the availability-weighted production by a dampened cost share, while the team
-R-Value is obtained by dividing the minute-weighted production by the total
-expenditure. The data includes six seasons---2018--19 and the years 2021--22
-through 2025--26---excluding the 2019--20 and 2020--21 seasons, which were
-disrupted by COVID, since the irregular schedules and the pro-rated tax
-settlements in those years compromise the availability and cost models
-respectively.
+\textbf{Methods.} R-Value pairs a performance core with a CBA-correct cost model.
+The core combines five z-scored pillars $z_k$---box production (rate and volume),
+usage-scaled shooting efficiency, minute-shrunk on-court offensive and defensive
+impact, and PIE---into a composite index, maps it through the normal CDF
+$\Phi$, and adjusts for availability over $m$ minutes:
+\begin{equation*}
+\mathrm{CPI}=\sum_{k=1}^{5} w_k z_k,
+\qquad
+\mathrm{PS}=100\,\Phi(\mathrm{CPI}),
+\qquad
+\mathrm{WPS}=\mathrm{PS}\bigl(0.55+0.45A\bigr),
+\quad A=\sqrt{\tfrac{\min(m,\,2200)}{2200}}.
+\end{equation*}
+The weights $w_k$ are set by a two-stage simplex grid search maximising All-NBA
+recall@15 and team-win rank correlation. The cost model computes each season's
+luxury tax $T(P)$ on payroll $P$ from the bracket schedule then in effect (2017
+CBA through 2022--23, the 2023 CBA thereafter), applies repeater rates, and
+grosses up every salary $s_i$ by the team's total-expenditure multiplier:
+\begin{equation*}
+\mathrm{TE}=P+T(P),
+\qquad
+\mathrm{CI}_i=\frac{s_i\,(\mathrm{TE}/P)}{\overline{\mathrm{TE}}},
+\qquad
+R_i=100\cdot\operatorname{norm}\!\left[\mathrm{WPS}_i
+\left(\frac{\overline{\mathrm{CI}}}{\mathrm{CI}_i}\right)^{0.35}\right],
+\end{equation*}
+so that the league average is 100. Team R-Value divides minute-weighted
+production by total expenditure. The data covers six seasons---2018--19 and
+2021--22 through 2025--26---excluding the COVID-disrupted 2019--20 and 2020--21,
+whose irregular schedules and pro-rated tax settlements compromise the
+availability and cost models respectively.
 
-\textbf{Results.} The results show that, using a leave-one-season-out
-cross-validation method---where each parameter is refitted excluding the season
-for which the performance is being assessed---the performance core recovers
-78.9\% of the All-NBA selections among its top 15, as compared to 71.1\% for
+\textbf{Results.} Under leave-one-season-out cross-validation---every parameter
+refitted excluding the season being scored---the core recovers 78.9\% of
+All-NBA selections among its top 15, against 71.1\% for
 PIE$\times$minutes, 34.4\% for raw plus-minus and 23.3\% for estimated net
-rating, and that it correlates with team wins at a correlation coefficient of
-$\rho = 0.914$ (Table 1). The weights are stable in that four of the six folds
-choose the same vector and the offensive-impact weight is the same in all six.
+rating, and correlates with team wins at $\rho = 0.914$ (Table~1). Weights are
+stable: four of six folds choose the same vector, the offensive-impact weight
+identical in all six.
 
-Championships are not usually acquired in an efficient manner (Figure 1). For the
-six champions in question, production-per-dollar came in at 16th, 29th, 14th,
-13th, 3rd and 14th out of a total of 30. The 2021--22 Warriors secured their
-title with an R-Value of 49 compared to a league average of 100, their payroll
-being \$179 million and exposing them to a \$191 million repeater tax. A title
-score that has been fitted shows that the quality of the eight-man rotation is
-about nine times that of the premium associated with the top two stars, and the
-actual champions end up ranked 2.83rd out of 30 when assessed against the sample.
-Analysis of R-Value on the 2025--26 season's 582 players showed a right skew of
-$+1.04$, indicating that there are more overpriced NBA contracts than there
-should be.
+Championships are not usually acquired efficiently (Figure~1). For the six
+champions, production-per-dollar ranked 16th, 29th, 14th, 13th, 3rd and 14th of
+30. The 2021--22 Warriors won at an R-Value of 49, on a \$179M payroll carrying
+a \$191M repeater tax. A fitted
+title score weights eight-man rotation quality roughly nine times the top-two
+star premium, and ranks actual champions 2.83rd of 30 out of sample. Across the
+2025--26 season's 582 players, R-Value is right-skewed at $+1.04$ (with a median
+of 94.9 against a mean fixed at 100): most contracts return below-average value
+per dollar, while a minority of rookie-scale deals return multiples of it.
 
-\textbf{Conclusion.} Cost-efficiency and the prospect of making the playoffs are
-almost entirely independent of each other since teams achieve playoff status by
-spending during the brief value periods, and the most cost-efficient rosters are
-generally two years away from becoming competitive rather than being competitive
-now. R-Value expresses that trade-off in terms of CBA-accurate dollars, enabling
-front offices to evaluate roster decisions in relation to actual expenditures
-rather than just nominal salaries, and it allows players to be ranked, teams to
-be assessed and seasons to be forecasted all on the basis of a single model.
+\textbf{Conclusion.} The league's most cost-efficient rosters are rarely the ones
+that win titles; teams convert brief value windows into contention by spending
+through them. R-Value expresses that trade-off in CBA-accurate dollars, letting
+front offices evaluate roster decisions against actual expenditure rather than
+nominal salary, and ranks players, rates teams and forecasts seasons from one
+model.
 
 \vspace{4pt}
 {\small Code and data: \texttt{[GitHub repository]}}
