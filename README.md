@@ -109,6 +109,13 @@ read, so run it first on a clean checkout.
 
 ## Reproducing
 
+**The analysis dataset is committed.** `output/player_rvalue_<season>.csv` and
+`output/team_rvalue_<season>.csv` carry every per-player and per-team row the
+results are computed from -- pillar z-scores, CPI, PS, WPS, salary, cost index
+and R-Value -- for all six seasons, plus the 2026-27 projections and the
+cross-validation folds. That is the data behind every number reported.
+
+
 `data/` is not committed: it holds cached copies of third-party pages that are
 not ours to redistribute. It is rebuilt automatically — the first run of any
 script fetches what it needs and caches it, so a clean checkout reproduces every
