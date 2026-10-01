@@ -19,19 +19,21 @@
 \end{center}
 \vspace{2pt}
 
-\textbf{Introduction.} Public player-value metrics assess production but ignore
-what it costs. Nominal salary badly understates that cost: under the luxury tax,
-a dollar paid by a repeater taxpayer can cost its franchise several times a
-dollar paid by a team below the line. We ask which players and teams achieve the
-highest production per dollar of true expenditure, and whether cost-efficiency is
-linked to winning championships. The question is timely: the 2023 CBA's apron
-system was designed specifically to limit high-spending rosters.
+\textbf{Introduction.} Public player-value metrics evaluate production but fail
+to take the associated costs into account. Nominal salary greatly underestimates
+those costs: under the luxury tax, a dollar paid by a repeater taxpayer can cost
+the franchise several times one paid by a team below the tax line. We ask which
+players and teams achieve the highest production per dollar of true expenditure,
+and whether cost-efficiency is connected to winning championships. The question
+is timely, since the apron system introduced in the 2023 CBA was specifically
+intended to curb high-spending rosters.
 
-\textbf{Methods.} R-Value pairs a performance core with a CBA-correct cost model.
-The core combines five z-scored pillars $z_k$---box production (rate and volume),
-usage-scaled shooting efficiency, minute-shrunk on-court offensive and defensive
-impact, and PIE---into a composite index, maps it through the normal CDF
-$\Phi$, and adjusts for availability over $m$ minutes:
+\textbf{Method.} R-Value matches a performance core with a CBA-correct cost
+model. The core combines five z-scored components $z_k$---box production (rate
+and volume), usage-scaled shooting efficiency, minute-shrunk on-court offensive
+and defensive impact, and PIE---into a composite index, applies the normal
+cumulative distribution function $\Phi$ to it, and adjusts for availability over
+$m$ minutes:
 \begin{equation*}
 \mathrm{CPI}=\sum_{k=1}^{5} w_k z_k,
 \qquad
@@ -40,11 +42,11 @@ $\Phi$, and adjusts for availability over $m$ minutes:
 \mathrm{WPS}=\mathrm{PS}\bigl(0.55+0.45A\bigr),
 \quad A=\sqrt{\tfrac{\min(m,\,2200)}{2200}}.
 \end{equation*}
-The weights $w_k$ are set by a two-stage simplex grid search maximising All-NBA
+The weights $w_k$ come from a two-stage simplex grid search maximising All-NBA
 recall@15 and team-win rank correlation. The cost model computes each season's
 luxury tax $T(P)$ on payroll $P$ from the bracket schedule then in effect (2017
 CBA through 2022--23, the 2023 CBA thereafter), applies repeater rates, and
-grosses up every salary $s_i$ by the team's total-expenditure multiplier:
+grosses up each salary $s_i$ by the team's total-expenditure multiplier:
 \begin{equation*}
 \mathrm{TE}=P+T(P),
 \qquad
@@ -53,36 +55,35 @@ grosses up every salary $s_i$ by the team's total-expenditure multiplier:
 R_i=100\cdot\operatorname{norm}\!\left[\mathrm{WPS}_i
 \left(\frac{\overline{\mathrm{CI}}}{\mathrm{CI}_i}\right)^{0.35}\right],
 \end{equation*}
-so that the league average is 100. Team R-Value divides minute-weighted
-production by total expenditure. The data covers six seasons---2018--19 and
-2021--22 through 2025--26---excluding the COVID-disrupted 2019--20 and 2020--21,
-whose irregular schedules and pro-rated tax settlements compromise the
-availability and cost models respectively.
+normalised so the league average is 100. Team R-Value divides minute-weighted
+output by total expenditure. Data covers six seasons---2018--19 and 2021--22
+through 2025--26---excluding the COVID-disrupted 2019--20 and 2020--21, whose
+irregular schedules and pro-rated tax settlements undermine the availability and
+cost models respectively.
 
-\textbf{Results.} Under leave-one-season-out cross-validation---every parameter
-refitted excluding the season being scored---the core recovers 78.9\% of
-All-NBA selections among its top 15, against 71.1\% for
-PIE$\times$minutes, 34.4\% for raw plus-minus and 23.3\% for estimated net
-rating, and correlates with team wins at $\rho = 0.914$ (Table~1). Weights are
-stable: four of six folds choose the same vector, the offensive-impact weight
-identical in all six.
+\textbf{Results.} Under leave-one-season-out cross-validation---each parameter
+refitted while the season being scored is excluded---the core recovers 78.9\% of
+All-NBA selections in its top 15, against 71.1\% for PIE$\times$minutes, 34.4\%
+for raw plus-minus and 23.3\% for estimated net rating, and correlates with team
+wins at $\rho = 0.914$ (Table~1). Weights are stable: four of six folds select
+the same vector, the offensive-impact weight identical in all six.
 
-Championships are not usually acquired efficiently (Figure~1). For the six
+Championships are generally not obtained efficiently (Figure~1). Among the six
 champions, production-per-dollar ranked 16th, 29th, 14th, 13th, 3rd and 14th of
 30. The 2021--22 Warriors won at an R-Value of 49, on a \$179M payroll carrying
-a \$191M repeater tax. A fitted
-title score weights eight-man rotation quality roughly nine times the top-two
-star premium, and ranks actual champions 2.83rd of 30 out of sample. Across the
-2025--26 season's 582 players, R-Value is right-skewed at $+1.04$ (with a median
-of 94.9 against a mean fixed at 100): most contracts return below-average value
-per dollar, while a minority of rookie-scale deals return multiples of it.
+a \$191M repeater tax. A fitted title score weights eight-man rotation quality
+roughly nine times the top-two star premium, and ranks actual champions 2.83rd
+of 30 out of sample. Across 2025--26's 582 players, R-Value is positively skewed
+at $+1.04$ (median 94.9 against a mean fixed at 100): most contracts yield
+below-average value per dollar, while a few rookie-level agreements return
+multiples of it.
 
-\textbf{Conclusion.} The league's most cost-efficient rosters are rarely the ones
-that win titles; teams convert brief value windows into contention by spending
-through them. R-Value expresses that trade-off in CBA-accurate dollars, letting
-front offices evaluate roster decisions against actual expenditure rather than
-nominal salary, and ranks players, rates teams and forecasts seasons from one
-model.
+\textbf{Conclusion.} The rosters offering the best cost value are seldom the
+ones that go on to win titles; instead, teams achieve competitiveness by
+spending through these short value windows. R-Value captures that trade-off in
+CBA-accurate dollars, letting front offices assess roster decisions on actual
+expenditure rather than nominal salary, and ranks players, evaluates teams and
+forecasts seasons from one model.
 
 \vspace{4pt}
 {\small Code and data: \texttt{[GitHub repository]}}
@@ -90,15 +91,15 @@ model.
 \begin{figure}[h]
 \centering
 \includegraphics[width=\textwidth]{figure1_champions_value.png}
-\caption{Team R-Value for all 30 teams across six seasons, champion highlighted.
-Five of the six champions sit at or below the league average of 100.}
+\caption{The R-Value for all 30 teams over six seasons, with the champion
+indicated. Five of the six champions are at or below the league average of 100.}
 \end{figure}
 
 \begin{table}[h]
 \centering
-\caption{Leave-one-season-out cross-validation. Every parameter (five pillar
-weights, two title premiums) is refit on the other five seasons, then scored on
-the held-out season.}
+\caption{The leave-one-season-out cross-validation method, applied by refitting
+each parameter---the five pillar weights and the two title premiums---on the
+other five seasons and then evaluating it against the season left out.}
 \small
 \begin{tabular}{lccc}
 \toprule
@@ -111,13 +112,13 @@ Held-out season & R-Value recall@15 & $\rho$ with wins & Champion title rank \\
 2024--25 & 0.800 & 0.932 & 3 \\
 2025--26 & 0.800 & 0.927 & 3 \\
 \midrule
-\textbf{Mean (out-of-sample)} & \textbf{0.789} & \textbf{0.914} & \textbf{2.83 of 30} \\
+\textbf{Average (out-of-sample)} & \textbf{0.789} & \textbf{0.914} & \textbf{2.83 of 30} \\
 \bottomrule
 \end{tabular}
 
 \vspace{5pt}
-{\small Benchmarks, which carry no fitted parameters: PIE$\times$minutes 0.711,
-raw plus-minus 0.344, estimated net rating 0.233.}
+{\small Benchmarks with no fitted parameters: PIE$\times$minutes 0.711, raw
+plus-minus 0.344, estimated net rating 0.233.}
 \end{table}
 
 \end{document}
