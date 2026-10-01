@@ -56,9 +56,7 @@ leg = ax.legend(handles, labels, frameon=False, fontsize=9, loc="upper left",
 for txt in leg.get_texts():
     txt.set_color(INK2)
 
-fig.text(0.075, 0.955, "Championships are not bought efficiently",
-         fontsize=14.5, color=INK, fontweight="semibold")
-fig.subplots_adjust(top=0.80, bottom=0.14, left=0.085, right=0.975)
+fig.subplots_adjust(top=0.88, bottom=0.14, left=0.085, right=0.975)
 fig.savefig("sloan/figure1_champions_value.png", dpi=300, facecolor=SURF)
 print("saved sloan/figure1_champions_value.png")
 
